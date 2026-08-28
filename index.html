@@ -1,107 +1,2490 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>3DS Website</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magnavox Odyssey Emulator</title>
 
-  <style>
-    body {
-      background-color: #1a1a2e;
-      color: white;
-      font-family: Arial;
-      text-align: center;
-      margin-top: 40px;
-    }
+<style>
+* { box-sizing: border-box; }
 
-    .box {
-      background-color: #222244;
-      border: 3px solid #6666ff;
-      width: 260px;
-      margin: auto;
-      padding: 20px;
-      border-radius: 10px;
-    }
+:root {
+    --bg:#171717; --panel:#242424; --panel2:#101010; --line:#484848;
+    --text:#eee; --muted:#aaa; --on:#c9ffc9; --off:#777;
+    --warn:#ffe69a; --bad:#ffaaaa; --accent:#b9ddff; --latched:#ffb3e6;
+}
 
-    h1 {
-      color: #66ccff;
-      font-size: 28px;
-    }
+body {
+    margin:0;
+    min-height:100vh;
+    padding:18px;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Consolas,"Courier New",monospace;
+}
 
-    p {
-      font-size: 14px;
-    }
+h1,h2,h3 { margin:0 0 10px; }
 
-    button {
-      background-color: #4444aa;
-      color: white;
-      border: 2px solid #8888ff;
-      padding: 10px;
-      font-size: 16px;
-      margin-top: 10px;
-      width: 180px;
-    }
+.layout {
+    max-width:1380px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 440px;
+    gap:18px;
+    align-items:start;
+}
 
-    button:active {
-      background-color: #6666ff;
-    }
+.panel {
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px;
+    margin-bottom:16px;
+}
 
-    #clock {
-      margin-top: 15px;
-      color: #aaccff;
-      font-size: 14px;
-    }
+.small { color:var(--muted); font-size:12px; line-height:1.45; }
+.warn { color:var(--warn); }
+.bad { color:var(--bad); }
+.accent { color:var(--accent); }
 
-    .star {
-      color: yellow;
-      font-size: 20px;
+canvas {
+    width:100%;
+    aspect-ratio:4/3;
+    display:block;
+    background:#080808;
+    border:2px solid #555;
+    image-rendering:pixelated;
+}
+
+textarea,select {
+    width:100%;
+    background:#101010;
+    color:#eee;
+    border:1px solid #666;
+    border-radius:6px;
+    padding:8px;
+    font:inherit;
+}
+
+textarea { min-height:150px; resize:vertical; }
+
+button {
+    background:#353535;
+    color:#fff;
+    border:1px solid #666;
+    border-radius:6px;
+    padding:8px 10px;
+    margin:6px 5px 0 0;
+    cursor:pointer;
+    font:inherit;
+}
+
+button:hover { background:#484848; }
+
+pre {
+    margin:0;
+    padding:10px;
+    background:var(--panel2);
+    border:1px solid #444;
+    border-radius:6px;
+    white-space:pre-wrap;
+    word-break:break-word;
+    line-height:1.4;
+}
+
+.row { display:flex; gap:8px; align-items:center; }
+.row > * { flex:1; }
+
+.module-grid {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:7px;
+}
+
+.module {
+    min-height:57px;
+    padding:7px;
+    border:1px solid #505050;
+    border-radius:7px;
+    background:#171717;
+    font-size:11px;
+}
+
+.module.on {
+    background:#d7ffd7;
+    color:#111;
+}
+
+.module .source {
+    display:block;
+    margin-top:4px;
+    opacity:.75;
+    font-size:9px;
+}
+
+.lamps {
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:7px;
+}
+
+.lamp {
+    padding:7px 4px;
+    text-align:center;
+    border:1px solid #555;
+    border-radius:7px;
+    background:#151515;
+    font-size:11px;
+}
+
+.lamp.on {
+    background:#ededed;
+    color:#111;
+}
+
+.lamp.crowbar {
+    background:var(--latched);
+    color:#111;
+}
+
+.pin-grid {
+    display:grid;
+    grid-template-columns:repeat(11,minmax(0,1fr));
+    gap:4px;
+}
+
+.pin {
+    min-width:0;
+    padding:5px 0;
+    margin:0;
+    font-size:11px;
+}
+
+.pin.high { background:var(--on); color:#111; }
+.pin.connected { outline:1px solid #ddd; outline-offset:-2px; }
+.pin.selected { outline:2px solid white; outline-offset:1px; }
+
+
+.event-log { max-height:190px; overflow:auto; }
+
+.tv-shell {
+    background: linear-gradient(180deg, #d8cfb9, #b8aa8d);
+    border: 8px solid #6d5b43;
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow:
+        inset 0 0 0 3px rgba(255,255,255,.22),
+        0 10px 30px rgba(0,0,0,.35);
+}
+
+.screen-wrap {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #050505;
+    box-shadow:
+        inset 0 0 40px rgba(255,255,255,.04),
+        inset 0 0 90px rgba(0,0,0,.9);
+}
+
+.screen-wrap canvas {
+    border: 0;
+    border-radius: 18px;
+}
+
+.screen-wrap.scanlines::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,.04) 0px,
+            rgba(255,255,255,.04) 1px,
+            rgba(0,0,0,.09) 2px,
+            rgba(0,0,0,.09) 4px
+        );
+    mix-blend-mode: overlay;
+}
+
+.screen-wrap.glow {
+    box-shadow:
+        0 0 30px rgba(255,255,255,.11),
+        inset 0 0 35px rgba(255,255,255,.05),
+        inset 0 0 90px rgba(0,0,0,.9);
+}
+
+.screen-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    pointer-events: none;
+    display: none;
+}
+
+.toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 8px;
+}
+
+.toolbar label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.toolbar input[type="range"] {
+    width: 100%;
+}
+
+.file-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.file-row input[type="file"] {
+    max-width: 100%;
+    color: var(--text);
+}
+
+
+.cheat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.cheat-card {
+    border: 1px solid #4b4b4b;
+    border-radius: 8px;
+    padding: 9px;
+    background: #171717;
+}
+
+.cheat-card h4 {
+    margin: 0 0 5px;
+    font-size: 12px;
+    color: var(--accent);
+}
+
+.cheat-code {
+    display: inline-block;
+    margin: 4px 0;
+    padding: 3px 6px;
+    border-radius: 5px;
+    background: #0d0d0d;
+    border: 1px solid #555;
+    color: #f1f1f1;
+    font-weight: bold;
+}
+
+.cheat-meta {
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 5px;
+}
+
+.cheat-card button {
+    width: 100%;
+    margin: 7px 0 0;
+    font-size: 10px;
+    padding: 5px;
+}
+
+.pin-help {
+    display: grid;
+    grid-template-columns: 65px 1fr;
+    gap: 8px;
+    align-items: start;
+    padding: 7px;
+    border-bottom: 1px solid #343434;
+}
+
+.pin-help:last-child {
+    border-bottom: 0;
+}
+
+.pin-num {
+    font-weight: bold;
+    color: var(--accent);
+}
+
+.supported {
+    color: #baffba;
+}
+
+.partial-support {
+    color: #ffe39b;
+}
+
+.not-simulated {
+    color: #c7c7c7;
+}
+
+.cheat-search {
+    width: 100%;
+    background: #0e0e0e;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 8px;
+    font: inherit;
+}
+
+.cheat-results {
+    margin-top: 8px;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    background: #111;
+    max-height: 310px;
+    overflow: auto;
+}
+
+@media (max-width: 700px) {
+    .cheat-grid {
+        grid-template-columns: 1fr;
     }
-  </style>
+}
+
+.workshop-step {
+    border: 1px solid #494949;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 8px;
+    background: #181818;
+}
+
+.workshop-step b {
+    color: var(--accent);
+}
+
+.codebox {
+    width: 100%;
+    min-height: 120px;
+    background: #0d0d0d;
+    color: #eaeaea;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 9px;
+    font: inherit;
+    resize: vertical;
+}
+
+.badge {
+    display: inline-block;
+    border: 1px solid #6a6a6a;
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: 10px;
+    color: var(--muted);
+}
+
+.separator {
+    height: 1px;
+    background: #3c3c3c;
+    margin: 12px 0;
+}
+
+@media (max-width:1000px) {
+    .layout { grid-template-columns:1fr; }
+}
+</style>
 </head>
 
 <body>
 
-  <div class="box">
+<div class="layout">
 
-    <div class="star">★ ★ ★</div>
+<main>
 
-    <h1>Hello, World!</h1>
+<div class="panel">
+    <h1>Magnavox Odyssey Emulator</h1>
+</div>
 
-    <p>Welcome to my 3DS-compatible website :)</p>
+<div class="panel">
+    <div class="tv-shell">
+        <div id="screenWrap" class="screen-wrap scanlines glow">
+            <canvas id="screen" width="640" height="480"></canvas>
+            <img id="screenOverlay" class="screen-overlay" alt="">
+        </div>
+    </div>
+</div>
 
-    <button onclick="helloButton()">
-      Click Me!
-    </button>
 
-    <div id="clock"></div>
+<div class="panel">
+    <h3>Presentation + PNG overlay</h3>
 
-  </div>
+    <div class="file-row">
+        <input id="overlayFile" type="file" accept="image/png,image/jpeg,image/webp">
+        <button id="clearOverlay">CLEAR OVERLAY</button>
+    </div>
 
-  <script>
-    function helloButton() {
-      alert("Hello from the Nintendo 3DS! :D");
+    <div class="toolbar" style="margin-top:10px;">
+        <label>
+            Overlay opacity
+            <input id="overlayOpacity" type="range" min="0" max="1" step="0.01" value="0.72">
+        </label>
+
+        <label>
+            Overlay visibility
+            <select id="overlayVisible">
+                <option value="yes">Visible</option>
+                <option value="no">Hidden</option>
+            </select>
+        </label>
+
+        <label>
+            Scanlines
+            <select id="scanlineMode">
+                <option value="on">On</option>
+                <option value="off">Off</option>
+            </select>
+        </label>
+
+        <label>
+            Screen glow
+            <select id="glowMode">
+                <option value="on">On</option>
+                <option value="off">Off</option>
+            </select>
+        </label>
+    </div>
+
+    <pre id="overlayDebug" style="margin-top:10px;">No overlay loaded.</pre>
+
+    <div class="small" style="margin-top:8px;">
+        The overlay is drawn over the emulated Odyssey video, just like the real translucent
+        plastic sheets sat on top of the television. Nothing is uploaded anywhere; the browser
+        reads the image locally.
+    </div>
+</div>
+
+<details class="panel">
+    <summary><b>Advanced diagnostics</b> <span class="small">— modules, live pins, collisions, and event log</span></summary>
+
+    <div style="margin-top:14px;">
+        <h3>Active circuit modules</h3>
+        <div id="moduleGrid" class="module-grid"></div>
+        <div id="moduleSource" class="small" style="margin-top:9px;"></div>
+    </div>
+
+    <div class="separator"></div>
+
+    <div>
+        <h3>Coincidence + Crowbar</h3>
+
+        <div class="lamps">
+            <div id="lampP1Ball" class="lamp">P1 ↔ BALL</div>
+            <div id="lampP2Ball" class="lamp">P2 ↔ BALL</div>
+            <div id="lampP1P2" class="lamp">P1 ↔ P2</div>
+            <div id="lampBallWall" class="lamp">BALL ↔ WALL</div>
+        </div>
+
+        <div class="lamps" style="margin-top:8px;">
+            <div id="crowP1" class="lamp">CROWBAR<br>P1</div>
+            <div id="crowP2" class="lamp">CROWBAR<br>P2</div>
+            <div id="crowBall" class="lamp">CROWBAR<br>BALL</div>
+            <div id="crowAny" class="lamp">SCR<br>LATCH</div>
+        </div>
+
+        <pre id="logicDebug" style="margin-top:10px;"></pre>
+    </div>
+
+    <div class="separator"></div>
+
+    <div>
+        <h3>44 live cartridge contacts</h3>
+        <div class="small">
+            Bright = HIGH in the simplified logic-net model. Outline = joined by cartridge copper.
+        </div>
+
+        <div id="pinGrid" class="pin-grid" style="margin-top:9px;"></div>
+        <pre id="pinInspector" style="margin-top:10px;">Click a pin.</pre>
+    </div>
+
+    <div class="separator"></div>
+
+    <div>
+        <h3>Event log</h3>
+        <pre id="eventLog" class="event-log"></pre>
+    </div>
+</details>
+
+</main>
+
+
+<aside>
+
+<div class="panel">
+    <h3>Controls</h3>
+    <pre>PLAYER 1
+WASD  = position
+Q / E = English
+F     = RESET 1
+
+PLAYER 2
+ARROWS = position
+U / O  = English
+H      = RESET 2
+
+MASTER
+- / + = ball speed
+[ / ] = wall center</pre>
+</div>
+
+
+<div class="panel">
+    <h3>Beginner Cheat Sheet 🧠</h3>
+
+    <div class="small">
+        Important: pins are <b>not commands</b>. A line such as
+        <span class="cheat-code">6-8-14</span> means those contacts are physically
+        joined into one electrical net. There is no left-to-right direction.
+    </div>
+
+    <div class="separator"></div>
+
+    <b>“I want the console to…”</b>
+
+    <div id="recipeGrid" class="cheat-grid"></div>
+
+    <div class="separator"></div>
+
+    <b>Useful pin lookup</b>
+
+    <input
+        id="cheatSearch"
+        class="cheat-search"
+        placeholder="Search: ball, wall, crowbar, pin 30, damping..."
+        style="margin-top:8px;"
+    >
+
+    <div id="cheatResults" class="cheat-results"></div>
+
+    <div class="small" style="margin-top:8px;">
+        <b>SUPPORTED</b> means this build currently models the behavior.
+        <b>PARTIAL</b> means the hardware role is useful/known but the emulator
+        simplifies it. <b>NOT SIMULATED</b> means the real connection is known,
+        but this build does not yet reproduce that electrical effect.
+    </div>
+</div>
+
+<div class="panel">
+    <h3>Homebrew Workshop</h3>
+    <span class="badge">make your own Odyssey game</span>
+
+    <div class="workshop-step">
+        <b>1. Pick what the console should physically do.</b><br>
+        Start from a stock card that behaves similarly, or edit the copper connections manually.
+        The cartridge is just groups of pins that are electrically joined.
+    </div>
+
+    <div class="workshop-step">
+        <b>2. Write the “ROM”.</b><br>
+        Each line is one electrical net:
+        <pre style="margin-top:6px;">2-4
+6-8-14-16-20-22
+30-34</pre>
+        A line like <code>6-8-14</code> means all three pins share one net.
+    </div>
+
+    <div class="workshop-step">
+        <b>3. Add an overlay.</b><br>
+        Make a 4:3 PNG in any editor, upload it above, then tune the opacity until the white spots
+        line up with your artwork.
+    </div>
+
+    <div class="workshop-step">
+        <b>4. Invent the rules.</b><br>
+        The Odyssey hardware only knows spots, coincidence, flip-flops, and Crowbar-style suppression.
+        Scoring, objectives, dice, cards, tokens, money, etc. can all live outside the machine.
+    </div>
+
+    <div class="workshop-step">
+        <b>5. Use Advanced diagnostics when you get stuck.</b><br>
+        Open the optional diagnostics section to inspect active modules, live pins,
+        coincidence signals, Crowbar state, and the event log.
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="file-row">
+        <input id="cartridgeFile" type="file" accept=".ody,.txt,text/plain">
+        <button id="exportCartridge">EXPORT .ODY</button>
+    </div>
+
+    <button id="useCurrentTemplate">USE CURRENT CARD AS TEMPLATE</button>
+
+    <textarea id="homebrewNotes" class="codebox" placeholder="Optional notes / rules for your game..."></textarea>
+
+    <pre id="homebrewStatus" style="margin-top:10px;">Ready.</pre>
+</div>
+
+<div class="panel">
+    <h3>Game Cards</h3>
+
+    <div class="row">
+        <select id="presetSelect"></select>
+        <button id="loadPreset">LOAD + INSERT</button>
+    </div>
+
+    <pre id="cardGameInfo" style="margin-top:10px;"></pre>
+
+    <textarea id="cartridgeText" style="margin-top:10px;"># Magnavox Odyssey Game Card #1
+
+2-4
+6-8-14-16-20-22
+30-34
+31-39
+35-37</textarea>
+
+    <button id="insertCartridge">INSERT</button>
+    <button id="ejectCartridge">EJECT</button>
+
+    <pre id="cartridgeDebug" style="margin-top:10px;"></pre>
+</div>
+
+</aside>
+
+</div>
+
+
+<script>
+"use strict";
+
+const W = 640;
+const H = 480;
+
+const canvas = document.getElementById("screen");
+const ctx = canvas.getContext("2d");
+
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+
+function intersects(a,b){
+    return (
+        a.x < b.x+b.width &&
+        a.x+a.width > b.x &&
+        a.y < b.y+b.height &&
+        a.y+a.height > b.y
+    );
+}
+
+
+// ============================================================
+// SPOT GENERATORS
+// ============================================================
+
+class Spot {
+    constructor(name,w,h){
+        this.name=name;
+        this.x=0; this.y=0;
+        this.width=w; this.height=h;
     }
 
-    function updateClock() {
-      var now = new Date();
+    draw(){
+        ctx.fillRect(
+            Math.round(this.x),
+            Math.round(this.y),
+            this.width,
+            this.height
+        );
+    }
+}
 
-      var time =
-        now.getHours() + ":" +
-        addZero(now.getMinutes()) + ":" +
-        addZero(now.getSeconds());
+const p1   = new Spot("Player 1",40,40);
+const p2   = new Spot("Player 2",40,40);
+const ball = new Spot("Ball",32,32);
+const wall = new Spot("Wall",24,H);
 
-      document.getElementById("clock").innerHTML = time;
+
+// ============================================================
+// CONTROLLERS
+// ============================================================
+
+class Controller {
+    constructor(){
+        this.horizontal=.5;
+        this.vertical=.5;
+        this.english=.5;
+    }
+}
+
+const c1 = new Controller();
+const c2 = new Controller();
+
+c1.horizontal=.18;
+c1.vertical=.5;
+
+c2.horizontal=.82;
+c2.vertical=.5;
+
+
+// ============================================================
+// CARTRIDGE BUS
+// ============================================================
+
+class CartridgeBus {
+    constructor(pinCount=44){
+        this.pinCount=pinCount;
+        this.clear();
     }
 
-    function addZero(num) {
-      if (num < 10) {
-        return "0" + num;
-      }
-      return num;
+    clear(){
+        this.parent=[];
+        for(let i=0;i<=this.pinCount;i++) this.parent[i]=i;
+
+        this.inserted=false;
+        this.pinDrivers=new Map();
+        this.netLevels=new Map();
     }
 
-    setInterval(updateClock, 1000);
+    check(pin){
+        if(!Number.isInteger(pin)||pin<1||pin>this.pinCount){
+            throw new Error("Invalid cartridge pin: "+pin);
+        }
+    }
 
-    updateClock();
-  </script>
+    find(pin){
+        this.check(pin);
 
+        if(this.parent[pin]!==pin){
+            this.parent[pin]=this.find(this.parent[pin]);
+        }
+
+        return this.parent[pin];
+    }
+
+    connect(a,b){
+        const ra=this.find(a);
+        const rb=this.find(b);
+
+        if(ra!==rb) this.parent[rb]=ra;
+    }
+
+    connectGroup(pins){
+        if(pins.length<2) return;
+        for(let i=1;i<pins.length;i++) this.connect(pins[0],pins[i]);
+    }
+
+    sameNet(a,b){
+        return this.find(a)===this.find(b);
+    }
+
+    getNet(pin){
+        const root=this.find(pin);
+        const out=[];
+
+        for(let p=1;p<=this.pinCount;p++){
+            if(this.find(p)===root) out.push(p);
+        }
+
+        return out;
+    }
+
+    getConnectedNets(){
+        const groups=new Map();
+
+        for(let p=1;p<=this.pinCount;p++){
+            const r=this.find(p);
+            if(!groups.has(r)) groups.set(r,[]);
+            groups.get(r).push(p);
+        }
+
+        return [...groups.values()].filter(g=>g.length>1);
+    }
+
+    netHasAll(pins){
+        if(!this.inserted || pins.length===0) return false;
+        return pins.every(p=>this.sameNet(pins[0],p));
+    }
+
+    load(text){
+        this.clear();
+
+        const pieces=[];
+
+        for(const raw of text.split(/\r?\n/)){
+            const line=raw.replace(/#.*/,"").trim();
+            if(!line) continue;
+
+            for(const part of line.split(";")){
+                const trimmed=part.trim();
+                if(trimmed) pieces.push(trimmed);
+            }
+        }
+
+        for(const line of pieces){
+            if(!/^\d+(?:\s*-\s*\d+)+$/.test(line)){
+                throw new Error('Invalid cartridge line: "'+line+'"');
+            }
+
+            const pins=line.split("-").map(x=>Number(x.trim()));
+            for(const p of pins) this.check(p);
+
+            this.connectGroup(pins);
+        }
+
+        this.inserted=true;
+    }
+
+    beginSignals(){
+        this.pinDrivers.clear();
+        this.netLevels.clear();
+    }
+
+    drive(pin,level,label=""){
+        if(!this.pinDrivers.has(pin)) this.pinDrivers.set(pin,[]);
+
+        this.pinDrivers.get(pin).push({
+            level:!!level,
+            label
+        });
+    }
+
+    resolveSignals(){
+        for(let p=1;p<=this.pinCount;p++){
+            const root=this.find(p);
+
+            if(!this.netLevels.has(root)){
+                this.netLevels.set(root,false);
+            }
+
+            const drivers=this.pinDrivers.get(p)||[];
+
+            if(drivers.some(d=>d.level)){
+                this.netLevels.set(root,true);
+            }
+        }
+    }
+
+    read(pin){
+        return this.netLevels.get(this.find(pin))||false;
+    }
+
+    getDrivers(pin){
+        return this.pinDrivers.get(pin)||[];
+    }
+}
+
+const cart = new CartridgeBus(44);
+
+
+// ============================================================
+// OFFICIAL SERVICE-MANUAL CARD CONNECTIONS
+// ============================================================
+
+const CARDS = {
+    1:["2-4","6-8-14-16-20-22","30-34","31-39","35-37"],
+    2:["2-4","6-8"],
+    3:["2-4","6-8-10-20-22","30-34","31-39","35-37","42-44"],
+    4:["2-4","6-8-18","21-23","33-37-39"],
+    5:["2-4","6-8-10-20-22","21-23-25","30-34","31-33-39","35-37"],
+    6:["2-4","3-5-9","26-28-38"],
+    7:["2-4","6-8-10-14-16-20-22","13-27","23-25","30-34","31-39","35-37","42-44"],
+    8:["2-4","6-8-12-14-20-22","9-11-13","15-17","31-39","34-36","35-37"],
+    9:["2-4","6-24","21-23"],
+    10:["2-4","6-8-10-20-22-24","23-25","30-34","31-39","35-37"]
+};
+
+
+// ============================================================
+// OFFICIAL MODULE ACTIVATION CHART (CARDS 1-10)
+// ============================================================
+
+const MODULE_NAMES = [
+    "Ball Generator",
+    "Gate Matrix",
+    "English Flip-Flop",
+    "Ball Flip-Flop",
+    "Wall Generator",
+    "Player 1 Generator",
+    "Player 2 Generator",
+    "Summer",
+    "Horizontal Sync",
+    "Vertical Sync",
+    "RF Oscillator",
+    "RF Filter"
+];
+
+const OFFICIAL_MODULES = {
+    "Ball Generator":      [1,3,5,7,8,10],
+    "Gate Matrix":         [1,3,5,7,8,10],
+    "English Flip-Flop":   [1,3,5,7,8,10],
+    "Ball Flip-Flop":      [7,8,10],
+    "Wall Generator":      [1,7,8,10],
+    "Player 1 Generator":  [1,2,3,4,5,6,7,8,10],
+    "Player 2 Generator":  [1,2,3,4,5,6,7,8,9,10],
+    "Summer":              [1,2,3,4,5,6,7,8,9,10],
+    "Horizontal Sync":     [1,2,3,4,5,6,7,8,9,10],
+    "Vertical Sync":       [1,2,3,4,5,6,7,8,9,10],
+    "RF Oscillator":       [1,2,3,4,5,6,7,8,9,10],
+    "RF Filter":           [1,2,3,4,5,6,7,8,9,10]
+};
+
+const modules={};
+for(const name of MODULE_NAMES) modules[name]=false;
+
+let moduleMode="OFF";
+let detectedStockCard=null;
+
+
+// ============================================================
+// CARD SIGNATURE MATCHING
+// ============================================================
+
+function canonicalGroups(groups){
+    const normalized=groups.map(group=>{
+        const nums=group.split("-").map(Number).sort((a,b)=>a-b);
+        return nums.join("-");
+    });
+
+    normalized.sort((a,b)=>{
+        const aa=Number(a.split("-")[0]);
+        const bb=Number(b.split("-")[0]);
+        return aa-bb || a.localeCompare(b);
+    });
+
+    return normalized.join("|");
+}
+
+const CARD_SIGNATURES={};
+
+for(const [num,groups] of Object.entries(CARDS)){
+    CARD_SIGNATURES[canonicalGroups(groups)]=Number(num);
+}
+
+function currentCardSignature(){
+    if(!cart.inserted) return "";
+
+    const groups=cart.getConnectedNets()
+        .map(net=>[...net].sort((a,b)=>a-b).join("-"));
+
+    return canonicalGroups(groups);
+}
+
+function identifyStockCard(){
+    return CARD_SIGNATURES[currentCardSignature()]||null;
+}
+
+
+// ============================================================
+// POWER / MODULE ACTIVATION
+// ============================================================
+
+function consolePowered(){
+    return cart.inserted && cart.sameNet(2,4);
+}
+
+function updateModules(){
+    for(const name of MODULE_NAMES) modules[name]=false;
+
+    detectedStockCard=identifyStockCard();
+
+    if(!consolePowered()){
+        moduleMode="OFF";
+        return;
+    }
+
+    if(detectedStockCard!==null){
+        moduleMode="SERVICE MANUAL";
+
+        for(const name of MODULE_NAMES){
+            modules[name]=OFFICIAL_MODULES[name].includes(detectedStockCard);
+        }
+
+        return;
+    }
+
+    // --------------------------------------------------------
+    // CUSTOM-CARD FALLBACK
+    // --------------------------------------------------------
+    //
+    // This is deliberately conservative. It is NOT pretending to be
+    // a full analog supply solver. It follows the useful ODYEMU idea
+    // of circuits being selected through the pin-6 side where possible.
+    //
+
+    moduleMode="CUSTOM / INFERRED";
+
+    modules["Summer"]=true;
+    modules["Horizontal Sync"]=true;
+    modules["Vertical Sync"]=true;
+    modules["RF Oscillator"]=true;
+    modules["RF Filter"]=true;
+
+    modules["Player 1 Generator"]=true;
+    modules["Player 2 Generator"]=true;
+
+    const logicPower =
+        cart.sameNet(6,20) ||
+        cart.sameNet(6,22);
+
+    modules["Ball Generator"]=logicPower;
+    modules["Gate Matrix"]=logicPower;
+    modules["English Flip-Flop"]=logicPower;
+
+    modules["Wall Generator"]=
+        cart.sameNet(6,14) ||
+        cart.sameNet(6,16);
+
+    modules["Ball Flip-Flop"]=
+        cart.sameNet(34,36) ||
+        (
+            cart.sameNet(11,13) &&
+            cart.sameNet(15,17)
+        );
+}
+
+
+// ============================================================
+// FLIP-FLOPS / BALL
+// ============================================================
+
+class FlipFlop {
+    constructor(name,state=true){
+        this.name=name;
+        this.state=state;
+        this.toggles=0;
+    }
+
+    set(v){ this.state=!!v; }
+
+    toggle(reason){
+        this.state=!this.state;
+        this.toggles++;
+
+        logEvent(
+            `${this.name} -> ${this.state?1:0}`+
+            (reason?` (${reason})`:"")
+        );
+    }
+}
+
+const englishFF=new FlipFlop("English FF",true);
+const ballFF=new FlipFlop("Ball FF",true);
+
+const master={
+    speed:1,
+    wallPosition:.5
+};
+
+
+const ballHardware={
+    visible:true,
+    moving:true,
+    directionX:1,
+    speed:115,
+    englishStrength:180
+};
+
+
+// ============================================================
+// CROWBAR (LATCHED SUPPRESSION)
+// ============================================================
+
+const crowbar={
+    p1:false,
+    p2:false,
+    ball:false,
+    latched:false,
+    reason:""
+};
+
+function latchCrowbar({p1=false,p2=false,ball=false},reason){
+    const changed=
+        (p1&&!crowbar.p1) ||
+        (p2&&!crowbar.p2) ||
+        (ball&&!crowbar.ball);
+
+    crowbar.p1 ||= p1;
+    crowbar.p2 ||= p2;
+    crowbar.ball ||= ball;
+    crowbar.latched = crowbar.p1 || crowbar.p2 || crowbar.ball;
+
+    if(reason) crowbar.reason=reason;
+
+    if(changed){
+        logEvent(
+            "CROWBAR LATCHED: "+
+            [
+                crowbar.p1?"P1":null,
+                crowbar.p2?"P2":null,
+                crowbar.ball?"BALL":null
+            ].filter(Boolean).join("+")+
+            ` (${reason})`
+        );
+    }
+}
+
+function clearCrowbar(what="all"){
+    if(what==="all"||what==="p1") crowbar.p1=false;
+    if(what==="all"||what==="p2") crowbar.p2=false;
+    if(what==="all"||what==="ball") crowbar.ball=false;
+
+    crowbar.latched=crowbar.p1||crowbar.p2||crowbar.ball;
+
+    if(!crowbar.latched) crowbar.reason="";
+}
+
+function p1Visible(){
+    return modules["Player 1 Generator"] && !crowbar.p1;
+}
+
+function p2Visible(){
+    return modules["Player 2 Generator"] && !crowbar.p2;
+}
+
+function ballVisible(){
+    return (
+        modules["Ball Generator"] &&
+        ballHardware.visible &&
+        !crowbar.ball
+    );
+}
+
+function wallVisible(){
+    return modules["Wall Generator"];
+}
+
+
+// ============================================================
+// HARDWARE ROUTES
+// ============================================================
+
+const gate={
+    rawP1Ball:false,
+    rawP2Ball:false,
+    rawP1P2:false,
+    rawBallWall:false,
+
+    p1Ball:false,
+    p2Ball:false,
+    p1p2:false,
+    ballWall:false,
+
+    prevP1Ball:false,
+    prevP2Ball:false,
+    prevP1P2:false,
+    prevBallWall:false
+};
+
+function routeP1Ball(){
+    return modules["Gate Matrix"] && cart.sameNet(35,37);
+}
+
+function routeP2Ball(){
+    return modules["Gate Matrix"] && cart.sameNet(31,39);
+}
+
+function routeEnglishToBall(){
+    return (
+        modules["English Flip-Flop"] &&
+        cart.sameNet(30,34)
+    );
+}
+
+function routeBallFFToBall(){
+    return (
+        modules["Ball Flip-Flop"] &&
+        cart.sameNet(34,36)
+    );
+}
+
+// Haunted House / Cat & Mouse-style direct player collision crowbar.
+// Real Card #4 ties 33, 37 and 39 in one net.
+function routePlayerCrowbar(){
+    return cart.netHasAll([33,37,39]);
+}
+
+// Submarine Card #5:
+// Gate/P2/crowbar route plus the P2/Ball/crowbar control group.
+function routeSubmarineCrowbar(){
+    return (
+        cart.netHasAll([31,33,39]) &&
+        cart.netHasAll([21,23,25]) &&
+        modules["Gate Matrix"] &&
+        modules["Ball Generator"]
+    );
+}
+
+
+// ============================================================
+// POSITIONS
+// ============================================================
+
+function updatePositions(){
+    const mx=50, my=50;
+
+    p1.x=-mx+c1.horizontal*(W+mx*2-p1.width);
+    p1.y=-my+c1.vertical*(H+my*2-p1.height);
+
+    p2.x=-mx+c2.horizontal*(W+mx*2-p2.width);
+    p2.y=-my+c2.vertical*(H+my*2-p2.height);
+
+    wall.x=master.wallPosition*(W-wall.width);
+    wall.y=0;
+}
+
+
+// ============================================================
+// BALL MOVEMENT
+// ============================================================
+
+function updateBall(dt){
+    if(!consolePowered()) return;
+    if(!modules["Ball Generator"]) return;
+    if(!ballHardware.visible) return;
+    if(crowbar.ball) return;
+    if(!ballHardware.moving) return;
+
+    ball.x +=
+        ballHardware.directionX *
+        ballHardware.speed *
+        master.speed *
+        dt;
+
+    if(modules["English Flip-Flop"]){
+        const english=
+            ballHardware.directionX>0
+                ? c1.english
+                : c2.english;
+
+        ball.y +=
+            ((english-.5)*2) *
+            ballHardware.englishStrength *
+            dt;
+    }
+
+    if(
+        ball.x>W ||
+        ball.x+ball.width<0 ||
+        ball.y>H ||
+        ball.y+ball.height<0
+    ){
+        ballHardware.visible=false;
+        ballHardware.moving=false;
+        logEvent("Ball left visible raster");
+    }
+}
+
+
+// ============================================================
+// COINCIDENCE / CROWBAR / FLIP-FLOP
+// ============================================================
+
+function updateLogic(){
+    gate.rawP1Ball=
+        p1Visible() &&
+        ballVisible() &&
+        intersects(p1,ball);
+
+    gate.rawP2Ball=
+        p2Visible() &&
+        ballVisible() &&
+        intersects(p2,ball);
+
+    gate.rawP1P2=
+        p1Visible() &&
+        p2Visible() &&
+        intersects(p1,p2);
+
+    gate.rawBallWall=
+        ballVisible() &&
+        wallVisible() &&
+        intersects(ball,wall);
+
+    gate.p1Ball=routeP1Ball()&&gate.rawP1Ball;
+    gate.p2Ball=routeP2Ball()&&gate.rawP2Ball;
+    gate.p1p2=routePlayerCrowbar()&&gate.rawP1P2;
+
+    gate.ballWall=
+        routeBallFFToBall() &&
+        gate.rawBallWall;
+
+    const p1BallRise=gate.p1Ball&&!gate.prevP1Ball;
+    const p2BallRise=gate.p2Ball&&!gate.prevP2Ball;
+    const p1p2Rise=gate.p1p2&&!gate.prevP1P2;
+    const wallRise=gate.ballWall&&!gate.prevBallWall;
+
+
+    // --------------------------------------------------------
+    // ENGLISH FF: player/ball contact changes horizontal drive
+    // --------------------------------------------------------
+
+    if(routeEnglishToBall()){
+        if(p1BallRise && ballHardware.directionX<0){
+            englishFF.toggle("P1/Ball coincidence");
+            ball.x=p1.x+p1.width+1;
+        }
+
+        if(p2BallRise && ballHardware.directionX>0){
+            englishFF.toggle("P2/Ball coincidence");
+            ball.x=p2.x-ball.width-1;
+        }
+
+        ballHardware.directionX=englishFF.state?1:-1;
+    }
+
+
+    // --------------------------------------------------------
+    // BALL FF: first frame-level wall rebound route
+    // --------------------------------------------------------
+
+    if(routeBallFFToBall() && wallRise){
+        ballFF.toggle("Ball/Wall coincidence");
+
+        if(ballHardware.directionX>0){
+            ball.x=wall.x-ball.width-1;
+        } else {
+            ball.x=wall.x+wall.width+1;
+        }
+
+        ballHardware.directionX=ballFF.state?1:-1;
+    }
+
+
+    // --------------------------------------------------------
+    // CROWBAR #1: CARD-4 STYLE PLAYER / PLAYER EXTINCTION
+    // --------------------------------------------------------
+    //
+    // Haunted House explicitly uses this:
+    // Detective touches Ghost -> Ghost stays extinguished
+    // until the Ghost presses RESET.
+    //
+
+    if(routePlayerCrowbar() && p1p2Rise){
+        latchCrowbar(
+            {p2:true},
+            "Player 1 / Player 2 coincidence"
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // CROWBAR #2: CARD-5 SUBMARINE HIT
+    // --------------------------------------------------------
+    //
+    // P2 ship + Ball torpedo disappear together.
+    //
+
+    if(routeSubmarineCrowbar() && p2BallRise){
+        latchCrowbar(
+            {p2:true,ball:true},
+            "Submarine torpedo hit"
+        );
+
+        ballHardware.moving=false;
+    }
+
+
+    gate.prevP1Ball=gate.p1Ball;
+    gate.prevP2Ball=gate.p2Ball;
+    gate.prevP1P2=gate.p1p2;
+    gate.prevBallWall=gate.ballWall;
+}
+
+
+// ============================================================
+// LIVE PIN SIGNALS
+// ============================================================
+
+function updatePinSignals(){
+    cart.beginSignals();
+
+    if(!consolePowered()){
+        cart.resolveSignals();
+        return;
+    }
+
+    if(modules["English Flip-Flop"]){
+        cart.drive(30,englishFF.state,"English Flip-Flop output");
+    }
+
+    if(modules["Ball Flip-Flop"]){
+        cart.drive(36,ballFF.state,"Ball Flip-Flop output");
+    }
+
+    if(p1Visible()){
+        cart.drive(
+            37,
+            gate.rawP1Ball || gate.rawP1P2,
+            "Player 1 coincidence/video timing approximation"
+        );
+    }
+
+    if(p2Visible()){
+        cart.drive(
+            39,
+            gate.rawP2Ball || gate.rawP1P2,
+            "Player 2 coincidence/video timing approximation"
+        );
+    }
+
+    if(gate.p1Ball){
+        cart.drive(35,true,"Gate Matrix P1/Ball coincidence");
+    }
+
+    if(gate.p2Ball){
+        cart.drive(31,true,"Gate Matrix P2/Ball coincidence");
+    }
+
+    if(crowbar.latched){
+        cart.drive(23,true,"Crowbar/SCR latch diagnostic");
+        cart.drive(33,true,"Crowbar/SCR latch diagnostic");
+    }
+
+    cart.resolveSignals();
+}
+
+
+// ============================================================
+// RESET BUTTONS
+// ============================================================
+
+function reset1(){
+    if(!consolePowered()) return;
+
+    // Player 1 reset can restore a crowbarred Ball.
+    clearCrowbar("ball");
+
+    if(!modules["Ball Generator"]) return;
+
+    ballHardware.visible=true;
+    ballHardware.moving=true;
+
+    ball.x=16;
+    ball.y=H/2-ball.height/2;
+
+    englishFF.set(true);
+    ballFF.set(true);
+
+    ballHardware.directionX=1;
+
+    logEvent("RESET 1");
+}
+
+function reset2(){
+    if(!consolePowered()) return;
+
+    // This is important for Haunted House and Submarine:
+    // Player 2 RESET relights P2.
+    clearCrowbar("p2");
+
+    if(routeSubmarineCrowbar()){
+        // Convoy Commander's reset reloads the torpedo tube:
+        // restore the torpedo, but don't launch it until RESET 1.
+        clearCrowbar("ball");
+
+        ballHardware.visible=true;
+        ballHardware.moving=false;
+        ball.x=16;
+        ball.y=H/2-ball.height/2;
+
+        logEvent("RESET 2 -> P2 relit + torpedo reloaded");
+        return;
+    }
+
+    if(!modules["Ball Generator"]){
+        logEvent("RESET 2 -> P2 relit");
+        return;
+    }
+
+    clearCrowbar("ball");
+
+    ballHardware.visible=true;
+    ballHardware.moving=true;
+
+    ball.x=W-ball.width-16;
+    ball.y=H/2-ball.height/2;
+
+    englishFF.set(false);
+    ballFF.set(false);
+
+    ballHardware.directionX=-1;
+
+    logEvent("RESET 2");
+}
+
+
+// ============================================================
+// INPUT
+// ============================================================
+
+const keys={};
+
+addEventListener("keydown",e=>{
+    keys[e.code]=true;
+
+    if(
+        e.code==="ArrowUp" ||
+        e.code==="ArrowDown" ||
+        e.code==="ArrowLeft" ||
+        e.code==="ArrowRight"
+    ){
+        e.preventDefault();
+    }
+
+    if(e.code==="KeyF"&&!e.repeat) reset1();
+    if(e.code==="KeyH"&&!e.repeat) reset2();
+});
+
+addEventListener("keyup",e=>keys[e.code]=false);
+
+addEventListener("blur",()=>{
+    for(const k in keys) keys[k]=false;
+});
+
+function updateControls(dt){
+    const s=.65;
+
+    if(keys["KeyA"]) c1.horizontal-=s*dt;
+    if(keys["KeyD"]) c1.horizontal+=s*dt;
+    if(keys["KeyW"]) c1.vertical-=s*dt;
+    if(keys["KeyS"]) c1.vertical+=s*dt;
+    if(keys["KeyQ"]) c1.english-=s*dt;
+    if(keys["KeyE"]) c1.english+=s*dt;
+
+    if(keys["ArrowLeft"]) c2.horizontal-=s*dt;
+    if(keys["ArrowRight"]) c2.horizontal+=s*dt;
+    if(keys["ArrowUp"]) c2.vertical-=s*dt;
+    if(keys["ArrowDown"]) c2.vertical+=s*dt;
+    if(keys["KeyU"]) c2.english-=s*dt;
+    if(keys["KeyO"]) c2.english+=s*dt;
+
+    if(keys["Minus"]) master.speed-=.5*dt;
+    if(keys["Equal"]) master.speed+=.5*dt;
+    if(keys["BracketLeft"]) master.wallPosition-=.3*dt;
+    if(keys["BracketRight"]) master.wallPosition+=.3*dt;
+
+    c1.horizontal=clamp(c1.horizontal,0,1);
+    c1.vertical=clamp(c1.vertical,0,1);
+    c1.english=clamp(c1.english,0,1);
+
+    c2.horizontal=clamp(c2.horizontal,0,1);
+    c2.vertical=clamp(c2.vertical,0,1);
+    c2.english=clamp(c2.english,0,1);
+
+    master.speed=clamp(master.speed,.5,1.5);
+    master.wallPosition=clamp(master.wallPosition,0,1);
+}
+
+
+// ============================================================
+// EVENT LOG
+// ============================================================
+
+const eventLog=document.getElementById("eventLog");
+const events=[];
+
+function logEvent(message){
+    const stamp=performance.now().toFixed(0).padStart(7," ");
+    events.unshift(`${stamp} ms  ${message}`);
+
+    if(events.length>35) events.length=35;
+
+    eventLog.textContent=events.join("\n");
+}
+
+
+// ============================================================
+// UI: CARTRIDGES
+// ============================================================
+
+const presetSelect=document.getElementById("presetSelect");
+const cartridgeText=document.getElementById("cartridgeText");
+const cartridgeDebug=document.getElementById("cartridgeDebug");
+const cardGameInfo=document.getElementById("cardGameInfo");
+
+// Magnavox's own Game Card Chart:
+// one electrical card can be reused by several completely different games.
+const CARD_GAMES = {
+    1: {
+        short: "Table Tennis",
+        games: ["Table Tennis"],
+        note: "Basic Odyssey paddle/ball configuration."
+    },
+    2: {
+        short: "Ski / Simon Says / Percepts / Fun Zoo",
+        games: ["Ski", "Simon Says", "Percepts", "Fun Zoo"],
+        note: "Same two-player hardware configuration; overlays/rules make the games different."
+    },
+    3: {
+        short: "Tennis / Hockey / Analogic / Baseball / Football*",
+        games: ["Tennis", "Hockey", "Analogic", "Baseball", "Football"],
+        note: "Football uses Card #3 for kicking/passing/punting and Card #4 for running plays."
+    },
+    4: {
+        short: "Cat & Mouse / Haunted House / Football* / Invasion*",
+        games: ["Cat & Mouse", "Haunted House", "Football", "Invasion"],
+        note: "CAT & MOUSE TEST: P1 (Cat) touching P2 (Mouse) should Crowbar-latch P2 OFF. Press H / RESET 2 to relight P2. Football also uses Card #3; Invasion also uses Cards #5 and #6."
+    },
+    5: {
+        short: "Submarine / Invasion*",
+        games: ["Submarine", "Invasion"],
+        note: "Submarine uses the Ball as a torpedo. Invasion also uses Cards #4 and #6."
+    },
+    6: {
+        short: "Roulette / States / Wipeout / Invasion*",
+        games: ["Roulette", "States", "Wipeout", "Invasion"],
+        note: "This is NOT Cat & Mouse. Cat & Mouse is Card #4. Invasion also uses Cards #4 and #5."
+    },
+    7: {
+        short: "Volleyball",
+        games: ["Volleyball"],
+        note: "Add-on Volleyball configuration."
+    },
+    8: {
+        short: "Handball",
+        games: ["Handball"],
+        note: "Add-on Handball configuration."
+    },
+    9: {
+        short: "Light Rifle — Prehistoric Safari / Dogfight! / Shootout!",
+        games: ["Prehistoric Safari", "Dogfight!", "Shootout!"],
+        note: "Requires the Odyssey light rifle accessory; Player 2 is used as the target spot."
+    },
+    10: {
+        short: "Light Rifle — Shooting Gallery",
+        games: ["Shooting Gallery"],
+        note: "Requires the Odyssey light rifle accessory; moving-target configuration."
+    }
+};
+
+function updateCardGameInfo(){
+    const n=Number(presetSelect.value);
+    const info=CARD_GAMES[n];
+
+    cardGameInfo.textContent =
+`GAME CARD #${n}
+Used by: ${info.games.join(", ")}
+
+${info.note}`;
+}
+
+for(let i=1;i<=10;i++){
+    const o=document.createElement("option");
+    o.value=i;
+    o.textContent=`#${i} — ${CARD_GAMES[i].short}`;
+    presetSelect.appendChild(o);
+}
+
+presetSelect.addEventListener("change", updateCardGameInfo);
+updateCardGameInfo();
+
+function cardText(num){
+    return `# Magnavox Odyssey Game Card #${num}\n\n`+
+        CARDS[num].join("\n");
+}
+
+function insertText(text){
+    try {
+        cart.load(text);
+
+        clearCrowbar("all");
+
+        gate.prevP1Ball=false;
+        gate.prevP2Ball=false;
+        gate.prevP1P2=false;
+        gate.prevBallWall=false;
+
+        englishFF.set(true);
+        ballFF.set(true);
+
+        updateModules();
+
+        ballHardware.visible=modules["Ball Generator"];
+        ballHardware.moving=modules["Ball Generator"];
+        ballHardware.directionX=1;
+
+        ball.x=16;
+        ball.y=H/2-ball.height/2;
+
+        logEvent(
+            detectedStockCard
+                ? `Official Card #${detectedStockCard} inserted`
+                : "Custom card inserted"
+        );
+
+        updateCartridgeUI();
+    }
+    catch(err){
+        cart.clear();
+        updateModules();
+
+        cartridgeDebug.className="bad";
+        cartridgeDebug.textContent=
+            "CARTRIDGE ERROR\n\n"+err.message;
+    }
+}
+
+document.getElementById("loadPreset").addEventListener("click",()=>{
+    const n=Number(presetSelect.value);
+    cartridgeText.value=cardText(n);
+    insertText(cartridgeText.value);
+});
+
+document.getElementById("insertCartridge").addEventListener("click",()=>{
+    insertText(cartridgeText.value);
+});
+
+document.getElementById("ejectCartridge").addEventListener("click",()=>{
+    cart.clear();
+    clearCrowbar("all");
+    updateModules();
+
+    ballHardware.visible=false;
+    ballHardware.moving=false;
+
+    logEvent("Card ejected -> power OFF");
+
+    updateCartridgeUI();
+});
+
+function updateCartridgeUI(){
+    cartridgeDebug.className="";
+
+    if(!cart.inserted){
+        cartridgeDebug.textContent=
+            "NO GAME CARD\n\nPOWER: OFF";
+        return;
+    }
+
+    const nets=cart.getConnectedNets();
+
+    let text=
+`CARD INSERTED
+POWER: ${consolePowered()?"ON":"OFF"}
+IDENTIFIED: ${detectedStockCard?`OFFICIAL CARD #${detectedStockCard}`:"CUSTOM / UNKNOWN"}
+${detectedStockCard?`GAMES: ${CARD_GAMES[detectedStockCard].games.join(", ")}\n`:""}
+`;
+
+    nets.forEach((net,i)=>{
+        text+=`NET ${i+1}: ${net.join(" ↔ ")}\n`;
+    });
+
+    cartridgeDebug.textContent=text;
+}
+
+
+// ============================================================
+// UI: MODULES
+// ============================================================
+
+const moduleGrid=document.getElementById("moduleGrid");
+const moduleSource=document.getElementById("moduleSource");
+
+const moduleNodes={};
+
+for(const name of MODULE_NAMES){
+    const div=document.createElement("div");
+    div.className="module";
+    div.innerHTML=
+        `<b>${name}</b><span class="source"></span>`;
+
+    moduleGrid.appendChild(div);
+    moduleNodes[name]=div;
+}
+
+function updateModuleUI(){
+    for(const name of MODULE_NAMES){
+        const node=moduleNodes[name];
+
+        node.classList.toggle("on",modules[name]);
+
+        node.querySelector(".source").textContent=
+            modules[name] ? "ACTIVE" : "off";
+    }
+
+    moduleSource.textContent=
+        moduleMode==="SERVICE MANUAL"
+        ? `Activation source: Magnavox service chart for Card #${detectedStockCard}.`
+        : moduleMode==="CUSTOM / INFERRED"
+        ? "Activation source: conservative wiring inference (custom card)."
+        : "No powered card.";
+}
+
+
+// ============================================================
+// UI: PIN GRID
+// ============================================================
+
+const pinGrid=document.getElementById("pinGrid");
+const pinInspector=document.getElementById("pinInspector");
+
+let selectedPin=null;
+
+for(let p=1;p<=44;p++){
+    const b=document.createElement("button");
+    b.className="pin";
+    b.textContent=p;
+    b.dataset.pin=p;
+
+    b.addEventListener("click",()=>{
+        selectedPin=p;
+        updatePinUI();
+    });
+
+    pinGrid.appendChild(b);
+}
+
+function updatePinUI(){
+    for(const b of pinGrid.querySelectorAll(".pin")){
+        const p=Number(b.dataset.pin);
+
+        b.classList.toggle(
+            "high",
+            cart.inserted && cart.read(p)
+        );
+
+        b.classList.toggle(
+            "connected",
+            cart.inserted && cart.getNet(p).length>1
+        );
+
+        b.classList.toggle(
+            "selected",
+            p===selectedPin
+        );
+    }
+
+    if(selectedPin===null){
+        pinInspector.textContent="Click a pin.";
+        return;
+    }
+
+    const p=selectedPin;
+
+    if(!cart.inserted){
+        pinInspector.textContent=
+            `PIN ${p}\nConsole off.`;
+        return;
+    }
+
+    const net=cart.getNet(p);
+
+    const help=PIN_HELP[p];
+
+    let text=
+`PIN ${p}
+${help ? help.name : "No beginner description yet."}
+
+${help ? help.text : "This contact has not been simplified into a beginner-friendly role yet."}
+
+Support: ${help ? supportLabel(help.support) : "UNKNOWN"}
+
+Level: ${cart.read(p)?"HIGH":"LOW"}
+Net: ${net.join(" ↔ ")}`;
+
+    const drivers=[];
+
+    for(const other of net){
+        for(const d of cart.getDrivers(other)){
+            drivers.push({pin:other,...d});
+        }
+    }
+
+    if(drivers.length){
+        text+="\n\nDrivers on this net:";
+
+        for(const d of drivers){
+            text+=
+                `\n  pin ${d.pin}: ${d.level?"HIGH":"LOW "} — ${d.label}`;
+        }
+    }
+
+    pinInspector.textContent=text;
+}
+
+
+// ============================================================
+// UI: LOGIC / CROWBAR
+// ============================================================
+
+const logicDebug=document.getElementById("logicDebug");
+
+const lampP1Ball=document.getElementById("lampP1Ball");
+const lampP2Ball=document.getElementById("lampP2Ball");
+const lampP1P2=document.getElementById("lampP1P2");
+const lampBallWall=document.getElementById("lampBallWall");
+
+const crowP1=document.getElementById("crowP1");
+const crowP2=document.getElementById("crowP2");
+const crowBall=document.getElementById("crowBall");
+const crowAny=document.getElementById("crowAny");
+
+function lamp(node,on){
+    node.classList.toggle("on",on);
+}
+
+function crowLamp(node,on){
+    node.classList.toggle("crowbar",on);
+}
+
+function updateLogicUI(){
+    lamp(lampP1Ball,gate.p1Ball);
+    lamp(lampP2Ball,gate.p2Ball);
+    lamp(lampP1P2,gate.p1p2);
+    lamp(lampBallWall,gate.ballWall);
+
+    crowLamp(crowP1,crowbar.p1);
+    crowLamp(crowP2,crowbar.p2);
+    crowLamp(crowBall,crowbar.ball);
+    crowLamp(crowAny,crowbar.latched);
+
+    logicDebug.textContent=
+`VISIBLE VIDEO
+P1:   ${p1Visible()?"YES":"NO"}
+P2:   ${p2Visible()?"YES":"NO"}
+Ball: ${ballVisible()?"YES":"NO"}
+Wall: ${wallVisible()?"YES":"NO"}
+
+RAW OVERLAP
+P1/Ball:   ${gate.rawP1Ball?"YES":"NO"}
+P2/Ball:   ${gate.rawP2Ball?"YES":"NO"}
+P1/P2:     ${gate.rawP1P2?"YES":"NO"}
+Ball/Wall: ${gate.rawBallWall?"YES":"NO"}
+
+FLIP-FLOPS
+English FF = ${englishFF.state?1:0}
+Ball FF    = ${ballFF.state?1:0}
+
+CROWBAR / SCR
+Latched: ${crowbar.latched?"YES":"NO"}
+Reason:  ${crowbar.reason||"-"}`;
+}
+
+
+
+// ============================================================
+// BEGINNER CHEAT SHEET
+// ============================================================
+//
+// These are deliberately phrased as useful wiring recipes rather than
+// pretending every contact is an opcode.
+//
+
+const CHEAT_RECIPES = [
+    {
+        title: "Turn the console on",
+        wiring: ["2-4"],
+        description: "All normal Odyssey cards close this pair. Without it, this emulator treats the console as unpowered.",
+        support: "supported"
+    },
+    {
+        title: "P1 can return the ball",
+        wiring: ["35-37"],
+        description: "Routes Player 1 timing/coincidence into the Gate Matrix path used by Card #1-style ball contact.",
+        support: "supported"
+    },
+    {
+        title: "P2 can return the ball",
+        wiring: ["31-39"],
+        description: "Routes Player 2 timing/coincidence into the Gate Matrix path used by Card #1-style ball contact.",
+        support: "supported"
+    },
+    {
+        title: "Player hits control horizontal ball direction",
+        wiring: ["30-34"],
+        description: "Connects the English Flip-Flop output to the ball horizontal drive. Used by Table Tennis-style behavior.",
+        support: "supported"
+    },
+    {
+        title: "Make P2 vanish when P1 touches it",
+        wiring: ["33-37-39"],
+        description: "Card #4-style Crowbar route. Useful for Cat & Mouse / Haunted House behavior. RESET 2 relights P2.",
+        support: "supported"
+    },
+    {
+        title: "Make a torpedo hit hide P2 + Ball",
+        wiring: ["31-33-39", "21-23-25"],
+        description: "Card #5-style Submarine Crowbar route. A P2/Ball hit latches both off until reset/reload.",
+        support: "supported"
+    },
+    {
+        title: "Ball Flip-Flop / wall-rebound route",
+        wiring: ["34-36", "9-11-13", "15-17"],
+        description: "The route used by stock cards that involve the Ball Flip-Flop. This build models a frame-level wall rebound from it.",
+        support: "partial"
+    },
+    {
+        title: "Known damping connection A",
+        wiring: ["3-5"],
+        description: "A real Odyssey damping-related connection. Useful for hardware research, but this emulator does not yet simulate its analog damping effect.",
+        support: "not-simulated"
+    },
+    {
+        title: "Known damping connection B",
+        wiring: ["26-28"],
+        description: "Second known damping-related connection. Real hardware effect is analog; not currently simulated here.",
+        support: "not-simulated"
+    }
+];
+
+const PIN_HELP = {
+    2:  {name:"Power/card-enable side", text:"Usually connected to pin 4. In this emulator, 2↔4 means the console is powered.", support:"supported"},
+    3:  {name:"Damping capacitor node A", text:"Part of one known damping network. Real effect is analog and not yet simulated.", support:"not-simulated"},
+    4:  {name:"Power/card-enable side", text:"Usually connected to pin 2. In this emulator, 2↔4 means the console is powered.", support:"supported"},
+    5:  {name:"Damping control node A", text:"3↔5 is a known damping-style connection. Not yet analog-simulated.", support:"not-simulated"},
+    6:  {name:"Activation/common side", text:"Frequently appears in the large activation nets on stock cards. Custom-card module inference looks at this region.", support:"partial"},
+    8:  {name:"Activation/supply distribution", text:"Often tied to pin 6 in stock cards.", support:"partial"},
+    9:  {name:"Logic / Ball-FF route", text:"Appears in Ball Flip-Flop-related card wiring such as 9-11-13.", support:"partial"},
+    10: {name:"Wall timing/shape network", text:"Hardware tap in the Wall generator region.", support:"partial"},
+    11: {name:"Ball Flip-Flop input", text:"One Ball Flip-Flop input contact. This build recognizes it in the wall-rebound recipe.", support:"partial"},
+    13: {name:"Gate Matrix input", text:"Gate Matrix-side contact commonly joined to Ball Flip-Flop input wiring.", support:"partial"},
+    14: {name:"Wall width/center network", text:"Wall-generator-related hardware tap. Often part of large activation nets.", support:"partial"},
+    15: {name:"Gate Matrix input", text:"Second Gate Matrix-side contact used with Ball Flip-Flop wiring.", support:"partial"},
+    16: {name:"Wall width network", text:"Wall-generator-related hardware tap.", support:"partial"},
+    17: {name:"Ball Flip-Flop input", text:"Second Ball Flip-Flop input contact.", support:"partial"},
+    18: {name:"Crowbar/reset-region node", text:"Appears in Card #4-style player/crowbar wiring region.", support:"partial"},
+    20: {name:"Activation/supply distribution", text:"Frequently part of the large logic activation net.", support:"partial"},
+    21: {name:"Player 2 generator/control network", text:"Used in the Submarine-style Crowbar route.", support:"supported"},
+    22: {name:"Gate Matrix input", text:"Part of several stock-card logic nets.", support:"partial"},
+    23: {name:"Crowbar/reset-region node", text:"Used in Submarine-style Crowbar behavior.", support:"supported"},
+    25: {name:"Ball Generator output tap", text:"Used by Submarine-style hit/crowbar routing.", support:"supported"},
+    26: {name:"Damping capacitor node B", text:"Part of the second known damping network. Not analog-simulated.", support:"not-simulated"},
+    28: {name:"Damping control node B", text:"26↔28 is a known damping-style connection.", support:"not-simulated"},
+    30: {name:"English Flip-Flop output", text:"Connect 30↔34 for Table Tennis-style horizontal ball direction control.", support:"supported"},
+    31: {name:"Gate Matrix endpoint", text:"Connect 31↔39 for Player 2 coincidence routing. Also appears in Submarine Crowbar wiring.", support:"supported"},
+    33: {name:"Crowbar/reset-region node", text:"Key contact in player/player and Submarine Crowbar recipes.", support:"supported"},
+    34: {name:"Ball horizontal drive", text:"Receives English FF or Ball FF output depending on cartridge wiring.", support:"supported"},
+    35: {name:"Gate Matrix endpoint", text:"Connect 35↔37 for Player 1 coincidence routing.", support:"supported"},
+    36: {name:"Ball Flip-Flop output", text:"Connect 34↔36 when using the Ball Flip-Flop horizontal-drive route.", support:"partial"},
+    37: {name:"Player 1 video/timing route", text:"Useful in P1/Ball coincidence and player/player Crowbar wiring.", support:"supported"},
+    38: {name:"Damping/generator-control path", text:"Used by some damping and size-control card groups.", support:"not-simulated"},
+    39: {name:"Player 2 video/timing route", text:"Useful in P2/Ball coincidence and player/player Crowbar wiring.", support:"supported"},
+    40: {name:"Ball size/height network", text:"Real Ball-generator shape/size control tap. Not currently modeled as analog hardware.", support:"not-simulated"},
+    42: {name:"Ball size network", text:"Real Ball-generator size/shape tap. Not currently analog-simulated.", support:"not-simulated"},
+    44: {name:"Ball size network", text:"Real Ball-generator size/shape tap. Not currently analog-simulated.", support:"not-simulated"}
+};
+
+const recipeGrid=document.getElementById("recipeGrid");
+const cheatSearch=document.getElementById("cheatSearch");
+const cheatResults=document.getElementById("cheatResults");
+
+function supportLabel(value){
+    if(value==="supported") return "SUPPORTED";
+    if(value==="partial") return "PARTIAL";
+    return "NOT SIMULATED";
+}
+
+function appendRecipeWiring(recipe){
+    const existing=
+        cartridgeText.value
+            .split(/\r?\n/)
+            .map(line=>line.trim())
+            .filter(Boolean);
+
+    const existingSet=new Set(
+        existing.filter(line=>!line.startsWith("#"))
+    );
+
+    const additions=[];
+
+    for(const line of recipe.wiring){
+        if(!existingSet.has(line)){
+            additions.push(line);
+        }
+    }
+
+    if(additions.length===0){
+        homebrewStatus.textContent=
+            `Recipe already present: ${recipe.title}`;
+        return;
+    }
+
+    let text=cartridgeText.value.trimEnd();
+
+    if(text.length){
+        text+="\n";
+    }
+
+    text+=
+        `\n# Recipe: ${recipe.title}\n`+
+        additions.join("\n");
+
+    cartridgeText.value=text;
+
+    homebrewStatus.textContent=
+        `Added recipe: ${recipe.title}\n`+
+        additions.join("\n");
+
+    logEvent(`Cheat-sheet recipe added: ${recipe.title}`);
+}
+
+function buildRecipes(){
+    recipeGrid.innerHTML="";
+
+    for(const recipe of CHEAT_RECIPES){
+        const card=document.createElement("div");
+        card.className="cheat-card";
+
+        const wiring=recipe.wiring
+            .map(line=>`<span class="cheat-code">${line}</span>`)
+            .join(" ");
+
+        card.innerHTML=
+`<h4>${recipe.title}</h4>
+<div>${wiring}</div>
+<div class="small">${recipe.description}</div>
+<div class="cheat-meta ${recipe.support}">
+${supportLabel(recipe.support)}
+</div>`;
+
+        const button=document.createElement("button");
+        button.textContent="ADD THIS WIRING TO EDITOR";
+
+        button.addEventListener("click",()=>{
+            appendRecipeWiring(recipe);
+        });
+
+        card.appendChild(button);
+
+        recipeGrid.appendChild(card);
+    }
+}
+
+function buildPinHelp(filter=""){
+    cheatResults.innerHTML="";
+
+    const q=filter.trim().toLowerCase();
+
+    let shown=0;
+
+    for(let pin=1;pin<=44;pin++){
+        const info=PIN_HELP[pin];
+
+        if(!info) continue;
+
+        const haystack=
+            `${pin} pin ${pin} ${info.name} ${info.text} ${info.support}`
+                .toLowerCase();
+
+        if(q && !haystack.includes(q)){
+            continue;
+        }
+
+        const row=document.createElement("div");
+        row.className="pin-help";
+
+        row.innerHTML=
+`<div class="pin-num">PIN ${pin}</div>
+<div>
+    <b>${info.name}</b><br>
+    <span class="small">${info.text}</span><br>
+    <span class="${info.support}">${supportLabel(info.support)}</span>
+</div>`;
+
+        row.addEventListener("click",()=>{
+            selectedPin=pin;
+            updatePinUI();
+
+            document.getElementById("pinInspector")
+                .scrollIntoView({behavior:"smooth",block:"center"});
+        });
+
+        cheatResults.appendChild(row);
+        shown++;
+    }
+
+    if(shown===0){
+        cheatResults.innerHTML=
+            `<div class="small" style="padding:10px;">No matching useful pins yet.</div>`;
+    }
+}
+
+cheatSearch.addEventListener("input",()=>{
+    buildPinHelp(cheatSearch.value);
+});
+
+buildRecipes();
+buildPinHelp();
+
+
+// ============================================================
+// OVERLAY / PRESENTATION
+// ============================================================
+
+const screenWrap=document.getElementById("screenWrap");
+const screenOverlay=document.getElementById("screenOverlay");
+
+const overlayFile=document.getElementById("overlayFile");
+const overlayOpacity=document.getElementById("overlayOpacity");
+const overlayVisible=document.getElementById("overlayVisible");
+const scanlineMode=document.getElementById("scanlineMode");
+const glowMode=document.getElementById("glowMode");
+const overlayDebug=document.getElementById("overlayDebug");
+
+const overlayState={
+    name:null,
+    loaded:false,
+    opacity:Number(overlayOpacity.value)
+};
+
+function refreshPresentation(){
+    overlayState.opacity=Number(overlayOpacity.value);
+
+    screenOverlay.style.opacity=String(overlayState.opacity);
+
+    screenOverlay.style.display=
+        overlayState.loaded &&
+        overlayVisible.value==="yes"
+            ? "block"
+            : "none";
+
+    screenWrap.classList.toggle(
+        "scanlines",
+        scanlineMode.value==="on"
+    );
+
+    screenWrap.classList.toggle(
+        "glow",
+        glowMode.value==="on"
+    );
+
+    overlayDebug.textContent=
+        overlayState.loaded
+            ? `Overlay: ${overlayState.name}
+Opacity: ${Math.round(overlayState.opacity*100)}%
+Visible: ${overlayVisible.value==="yes"?"YES":"NO"}`
+            : "No overlay loaded.";
+}
+
+overlayFile.addEventListener("change",()=>{
+    const file=overlayFile.files && overlayFile.files[0];
+
+    if(!file) return;
+
+    const reader=new FileReader();
+
+    reader.onload=()=>{
+        screenOverlay.src=reader.result;
+        overlayState.name=file.name;
+        overlayState.loaded=true;
+
+        refreshPresentation();
+        logEvent(`Overlay loaded: ${file.name}`);
+    };
+
+    reader.readAsDataURL(file);
+});
+
+document.getElementById("clearOverlay").addEventListener("click",()=>{
+    screenOverlay.removeAttribute("src");
+
+    overlayState.name=null;
+    overlayState.loaded=false;
+
+    overlayFile.value="";
+
+    refreshPresentation();
+    logEvent("Overlay cleared");
+});
+
+overlayOpacity.addEventListener("input",refreshPresentation);
+overlayVisible.addEventListener("change",refreshPresentation);
+scanlineMode.addEventListener("change",refreshPresentation);
+glowMode.addEventListener("change",refreshPresentation);
+
+refreshPresentation();
+
+
+// ============================================================
+// HOMEBREW WORKSHOP / FILE IMPORT-EXPORT
+// ============================================================
+
+const cartridgeFile=document.getElementById("cartridgeFile");
+const homebrewNotes=document.getElementById("homebrewNotes");
+const homebrewStatus=document.getElementById("homebrewStatus");
+
+function exportTextFile(filename,text){
+    const blob=new Blob(
+        [text],
+        {type:"text/plain;charset=utf-8"}
+    );
+
+    const url=URL.createObjectURL(blob);
+
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=filename;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+}
+
+function buildODYText(){
+    let text=
+`# Magnavox Odyssey homebrew cartridge
+# Generated by this emulator
+`;
+
+    if(overlayState.loaded && overlayState.name){
+        text+=`# Overlay: ${overlayState.name}\n`;
+    }
+
+    if(homebrewNotes.value.trim()){
+        for(const line of homebrewNotes.value.trim().split(/\r?\n/)){
+            text+=`# ${line}\n`;
+        }
+    }
+
+    text+="\n"+cartridgeText.value.trim()+"\n";
+
+    return text;
+}
+
+document.getElementById("exportCartridge").addEventListener("click",()=>{
+    const text=buildODYText();
+
+    exportTextFile(
+        "my_odyssey_game.ody",
+        text
+    );
+
+    homebrewStatus.textContent=
+`Exported my_odyssey_game.ody
+
+The file contains the cartridge wiring as plain text.
+Keep your PNG overlay next to it if your game uses one.`;
+
+    logEvent("Homebrew cartridge exported");
+});
+
+document.getElementById("useCurrentTemplate").addEventListener("click",()=>{
+    if(!cart.inserted){
+        homebrewStatus.textContent=
+            "Insert a card first.";
+        return;
+    }
+
+    const groups=
+        cart.getConnectedNets()
+            .map(net=>net.join("-"))
+            .join("\n");
+
+    cartridgeText.value=
+`# Custom Odyssey game
+# Edit these connections freely.
+
+${groups}`;
+
+    homebrewStatus.textContent=
+        "Copied the currently inserted electrical nets into the cartridge editor.";
+
+    logEvent("Current card copied into homebrew template");
+});
+
+cartridgeFile.addEventListener("change",()=>{
+    const file=cartridgeFile.files && cartridgeFile.files[0];
+
+    if(!file) return;
+
+    const reader=new FileReader();
+
+    reader.onload=()=>{
+        const text=String(reader.result);
+
+        cartridgeText.value=text;
+
+        try{
+            insertText(text);
+
+            homebrewStatus.textContent=
+`Loaded ${file.name}
+Inserted successfully.`;
+
+            logEvent(`Cartridge file loaded: ${file.name}`);
+        }
+        catch(error){
+            homebrewStatus.textContent=
+                "Could not insert cartridge:\n"+
+                error.message;
+        }
+    };
+
+    reader.readAsText(file);
+});
+
+// ============================================================
+// RENDER
+// ============================================================
+
+function render(){
+    ctx.fillStyle="#080808";
+    ctx.fillRect(0,0,W,H);
+
+    if(!consolePowered()){
+        ctx.fillStyle="#777";
+        ctx.font="19px monospace";
+        ctx.textAlign="center";
+        ctx.fillText(
+            "NO POWER — INSERT GAME CARD",
+            W/2,H/2
+        );
+        ctx.textAlign="left";
+        return;
+    }
+
+    ctx.fillStyle="#fff";
+
+    if(p1Visible()) p1.draw();
+    if(p2Visible()) p2.draw();
+    if(wallVisible()) wall.draw();
+    if(ballVisible()) ball.draw();
+}
+
+
+// ============================================================
+// LOOP
+// ============================================================
+
+let previous=performance.now();
+
+function loop(now){
+    const dt=Math.min((now-previous)/1000,.05);
+    previous=now;
+
+    updateControls(dt);
+    updatePositions();
+
+    updateModules();
+    updateBall(dt);
+
+    updateLogic();
+    updatePinSignals();
+
+    updateModuleUI();
+    updateLogicUI();
+    updatePinUI();
+    updateCartridgeUI();
+
+    render();
+
+    requestAnimationFrame(loop);
+}
+
+
+// ============================================================
+// START
+// ============================================================
+
+insertText(cartridgeText.value);
+
+
+logEvent("Emulator ready");
+
+requestAnimationFrame(loop);
+
+</script>
 </body>
 </html>
