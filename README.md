@@ -1,6 +1,8 @@
 # Magnavox Today
 (vibe coded)
 
+THERES NOW MOBILE SUPPORT!!
+
 A browser-based emulator and homebrew playground for the **Magnavox
 Odyssey (1972)** --- the first commercial home video game console.
 
