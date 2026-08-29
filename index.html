@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#171717">
 <title>Magnavox Today</title>
 
 <style>
@@ -17,10 +18,11 @@
 body {
     margin:0;
     min-height:100vh;
-    padding:18px;
+    padding:max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
     background:var(--bg);
     color:var(--text);
     font-family:Consolas,"Courier New",monospace;
+    overflow-x:hidden;
 }
 
 h1,h2,h3 { margin:0 0 10px; }
@@ -80,6 +82,7 @@ button {
 }
 
 button:hover { background:#484848; }
+button:active { background:#5a5a5a; transform:translateY(1px); }
 
 pre {
     margin:0;
@@ -392,8 +395,148 @@ pre {
     margin: 12px 0;
 }
 
+.touch-controller-grid {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+}
+
+.touch-controller {
+    min-width:0;
+    padding:11px;
+    border:1px solid #555;
+    border-radius:10px;
+    background:#171717;
+}
+
+.touch-controller h4 {
+    margin:0 0 8px;
+    color:var(--accent);
+}
+
+.touch-controller-body {
+    display:grid;
+    grid-template-columns:minmax(150px,1fr) 58px;
+    gap:10px;
+    align-items:stretch;
+}
+
+.touch-pad {
+    position:relative;
+    min-height:180px;
+    aspect-ratio:4/3;
+    border:2px solid #666;
+    border-radius:12px;
+    overflow:hidden;
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+    background:
+        linear-gradient(90deg,transparent calc(50% - .5px),#454545 50%,transparent calc(50% + .5px)),
+        linear-gradient(transparent calc(50% - .5px),#454545 50%,transparent calc(50% + .5px)),
+        radial-gradient(circle at center,#292929,#101010);
+}
+
+.touch-pad::before {
+    content:"POSITION";
+    position:absolute;
+    left:8px;
+    top:7px;
+    color:#858585;
+    font-size:10px;
+    pointer-events:none;
+}
+
+.touch-knob {
+    position:absolute;
+    width:34px;
+    height:34px;
+    margin:-17px 0 0 -17px;
+    border:2px solid white;
+    border-radius:50%;
+    background:#8dbce8;
+    box-shadow:0 2px 8px #000;
+    pointer-events:none;
+}
+
+.english-control {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-width:0;
+}
+
+.english-control label {
+    color:var(--muted);
+    font-size:10px;
+    writing-mode:vertical-rl;
+    transform:rotate(180deg);
+}
+
+.english-slider-wrap {
+    flex:1;
+    width:48px;
+    display:grid;
+    place-items:center;
+    touch-action:none;
+}
+
+.english-slider {
+    width:150px;
+    transform:rotate(-90deg);
+    accent-color:#8dbce8;
+}
+
+.touch-readout {
+    margin-top:8px;
+    min-height:16px;
+    color:var(--muted);
+    font-size:10px;
+    text-align:center;
+}
+
+.touch-reset {
+    width:100%;
+    min-height:44px;
+    margin:8px 0 0;
+    border-color:#8a7d6d;
+    background:#594b3d;
+    touch-action:manipulation;
+}
+
+.touch-reset:active,
+.touch-reset.pressed {
+    background:#90745a;
+}
+
 @media (max-width:1000px) {
     .layout { grid-template-columns:1fr; }
+}
+
+@media (max-width:700px) {
+    body {
+        padding:max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    }
+
+    .panel { padding:10px; margin-bottom:10px; }
+    .tv-shell { border-width:5px; border-radius:14px; padding:7px; }
+    .screen-wrap, .screen-wrap canvas { border-radius:10px; }
+    .toolbar { grid-template-columns:1fr; }
+    .row { flex-wrap:wrap; }
+    .row > * { flex:1 1 100%; }
+    button { min-height:42px; }
+    .module-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .pin-grid { grid-template-columns:repeat(6,minmax(0,1fr)); }
+    .lamps { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .touch-controller-grid { grid-template-columns:1fr; }
+    .touch-controller-body { grid-template-columns:minmax(0,1fr) 58px; }
+    .touch-pad { min-height:170px; }
+    textarea { font-size:16px; }
+}
+
+@media (max-width:700px) and (orientation:landscape) {
+    .touch-controller-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .touch-pad { min-height:135px; }
 }
 </style>
 </head>
@@ -414,6 +557,50 @@ pre {
             <canvas id="screen" width="640" height="480"></canvas>
             <img id="screenOverlay" class="screen-overlay" alt="">
         </div>
+    </div>
+</div>
+
+<div class="panel" id="touchControls">
+    <h3>Touch Controllers</h3>
+    <div class="small" style="margin-bottom:10px;">
+        Drag inside a position pad and move the English slider. The controls stay where
+        you release them, like the Odyssey's real knobs. Multi-touch is supported.
+    </div>
+
+    <div class="touch-controller-grid">
+        <section class="touch-controller" data-player="1">
+            <h4>PLAYER 1</h4>
+            <div class="touch-controller-body">
+                <div class="touch-pad" data-pad="1" role="slider" aria-label="Player 1 horizontal and vertical position" tabindex="0">
+                    <div class="touch-knob"></div>
+                </div>
+                <div class="english-control">
+                    <label for="touchEnglish1">ENGLISH</label>
+                    <div class="english-slider-wrap">
+                        <input id="touchEnglish1" class="english-slider" type="range" min="0" max="1" step="0.001" value="0.5" aria-label="Player 1 English">
+                    </div>
+                </div>
+            </div>
+            <div id="touchReadout1" class="touch-readout"></div>
+            <button class="touch-reset" data-reset="1">RESET 1 / SERVE</button>
+        </section>
+
+        <section class="touch-controller" data-player="2">
+            <h4>PLAYER 2</h4>
+            <div class="touch-controller-body">
+                <div class="touch-pad" data-pad="2" role="slider" aria-label="Player 2 horizontal and vertical position" tabindex="0">
+                    <div class="touch-knob"></div>
+                </div>
+                <div class="english-control">
+                    <label for="touchEnglish2">ENGLISH</label>
+                    <div class="english-slider-wrap">
+                        <input id="touchEnglish2" class="english-slider" type="range" min="0" max="1" step="0.001" value="0.5" aria-label="Player 2 English">
+                    </div>
+                </div>
+            </div>
+            <div id="touchReadout2" class="touch-readout"></div>
+            <button class="touch-reset" data-reset="2">RESET 2 / SERVE</button>
+        </section>
     </div>
 </div>
 
@@ -524,12 +711,17 @@ pre {
 
 <div class="panel">
     <h3>Controls</h3>
-    <pre>PLAYER 1
+    <pre>TOUCH / MOUSE
+Drag either position pad
+English slider = ball vertical drive
+RESET button = reset / serve
+
+KEYBOARD — PLAYER 1
 WASD  = position
 Q / E = English
 F     = RESET 1
 
-PLAYER 2
+KEYBOARD — PLAYER 2
 ARROWS = position
 U / O  = English
 H      = RESET 2
@@ -1175,6 +1367,13 @@ const gate={
     prevBallWall:false
 };
 
+function clearCoincidenceEdges(){
+    gate.prevP1Ball=false;
+    gate.prevP2Ball=false;
+    gate.prevP1P2=false;
+    gate.prevBallWall=false;
+}
+
 function routeP1Ball(){
     return modules["Gate Matrix"] && cart.sameNet(35,37);
 }
@@ -1451,6 +1650,8 @@ function updatePinSignals(){
 function reset1(){
     if(!consolePowered()) return;
 
+    clearCoincidenceEdges();
+
     // Player 1 reset can restore a crowbarred Ball.
     clearCrowbar("ball");
 
@@ -1472,6 +1673,8 @@ function reset1(){
 
 function reset2(){
     if(!consolePowered()) return;
+
+    clearCoincidenceEdges();
 
     // This is important for Haunted House and Submarine:
     // Player 2 RESET relights P2.
@@ -1574,6 +1777,101 @@ function updateControls(dt){
     master.speed=clamp(master.speed,.5,1.5);
     master.wallPosition=clamp(master.wallPosition,0,1);
 }
+
+
+// ============================================================
+// TOUCH / POINTER CONTROLLERS
+// ============================================================
+
+const touchControllers=[c1,c2];
+
+function syncTouchController(playerIndex){
+    const number=playerIndex+1;
+    const controller=touchControllers[playerIndex];
+    const pad=document.querySelector(`[data-pad="${number}"]`);
+    const knob=pad.querySelector(".touch-knob");
+    const english=document.getElementById(`touchEnglish${number}`);
+    const readout=document.getElementById(`touchReadout${number}`);
+
+    knob.style.left=`${controller.horizontal*100}%`;
+    knob.style.top=`${controller.vertical*100}%`;
+    english.value=String(controller.english);
+
+    pad.setAttribute(
+        "aria-valuetext",
+        `Horizontal ${Math.round(controller.horizontal*100)} percent, vertical ${Math.round(controller.vertical*100)} percent`
+    );
+
+    readout.textContent=
+        `H ${Math.round(controller.horizontal*100).toString().padStart(3," ")}%  `+
+        `V ${Math.round(controller.vertical*100).toString().padStart(3," ")}%  `+
+        `English ${Math.round(controller.english*100).toString().padStart(3," ")}%`;
+}
+
+function bindTouchController(playerIndex){
+    const number=playerIndex+1;
+    const controller=touchControllers[playerIndex];
+    const pad=document.querySelector(`[data-pad="${number}"]`);
+    const english=document.getElementById(`touchEnglish${number}`);
+    const reset=document.querySelector(`[data-reset="${number}"]`);
+
+    let activePointer=null;
+
+    const applyPadPointer=event=>{
+        const rect=pad.getBoundingClientRect();
+        controller.horizontal=clamp((event.clientX-rect.left)/rect.width,0,1);
+        controller.vertical=clamp((event.clientY-rect.top)/rect.height,0,1);
+        syncTouchController(playerIndex);
+    };
+
+    pad.addEventListener("pointerdown",event=>{
+        if(activePointer!==null) return;
+
+        activePointer=event.pointerId;
+        pad.setPointerCapture(event.pointerId);
+        applyPadPointer(event);
+        event.preventDefault();
+    });
+
+    pad.addEventListener("pointermove",event=>{
+        if(event.pointerId!==activePointer) return;
+        applyPadPointer(event);
+        event.preventDefault();
+    });
+
+    const releasePointer=event=>{
+        if(event.pointerId===activePointer) activePointer=null;
+    };
+
+    pad.addEventListener("pointerup",releasePointer);
+    pad.addEventListener("pointercancel",releasePointer);
+    pad.addEventListener("lostpointercapture",()=>{ activePointer=null; });
+
+    english.addEventListener("input",()=>{
+        controller.english=Number(english.value);
+        syncTouchController(playerIndex);
+    });
+
+    reset.addEventListener("click",()=>{
+        if(playerIndex===0) reset1();
+        else reset2();
+    });
+
+    reset.addEventListener("pointerdown",()=>reset.classList.add("pressed"));
+    for(const type of ["pointerup","pointercancel","pointerleave"]){
+        reset.addEventListener(type,()=>reset.classList.remove("pressed"));
+    }
+
+    syncTouchController(playerIndex);
+}
+
+bindTouchController(0);
+bindTouchController(1);
+
+addEventListener("resize",()=>{
+    syncTouchController(0);
+    syncTouchController(1);
+});
 
 
 // ============================================================
@@ -1689,10 +1987,7 @@ function insertText(text){
 
         clearCrowbar("all");
 
-        gate.prevP1Ball=false;
-        gate.prevP2Ball=false;
-        gate.prevP1P2=false;
-        gate.prevBallWall=false;
+        clearCoincidenceEdges();
 
         englishFF.set(true);
         ballFF.set(true);
@@ -2448,25 +2743,71 @@ function render(){
 // LOOP
 // ============================================================
 
+// The service manual specifies a 60 Hz vertical timing generator. Keeping the
+// behavioral model on that fixed clock makes ball speed and controller motion
+// independent of a phone's 60/90/120 Hz display refresh rate.
+const ODYSSEY_REFRESH_HZ=60;
+const FIXED_STEP=1/ODYSSEY_REFRESH_HZ;
+const MAX_CATCHUP_STEPS=6;
+const MAX_COINCIDENCE_TRAVEL=2;
+
 let previous=performance.now();
+let accumulator=0;
 
-function loop(now){
-    const dt=Math.min((now-previous)/1000,.05);
-    previous=now;
-
+function simulationStep(dt){
     updateControls(dt);
     updatePositions();
-
     updateModules();
-    updateBall(dt);
 
+    // Controller movement can create a coincidence even before the Ball moves.
     updateLogic();
+
+    // The hardware's Gate Matrix reacts during the raster, not just once at the
+    // end of a browser frame. Small motion slices are a practical behavioral
+    // approximation and prevent fast balls from skipping thin spots or walls.
+    const horizontalTravel=
+        ballHardware.speed*master.speed*dt;
+    const verticalTravel=
+        ballHardware.englishStrength*dt;
+    const slices=Math.max(
+        1,
+        Math.ceil(
+            Math.max(horizontalTravel,verticalTravel)/
+            MAX_COINCIDENCE_TRAVEL
+        )
+    );
+
+    for(let i=0;i<slices;i++){
+        updateBall(dt/slices);
+        updateLogic();
+    }
+
     updatePinSignals();
+}
+
+function loop(now){
+    const elapsed=Math.min((now-previous)/1000,.1);
+    previous=now;
+    accumulator+=elapsed;
+
+    let steps=0;
+
+    while(accumulator>=FIXED_STEP && steps<MAX_CATCHUP_STEPS){
+        simulationStep(FIXED_STEP);
+        accumulator-=FIXED_STEP;
+        steps++;
+    }
+
+    if(steps===MAX_CATCHUP_STEPS){
+        accumulator=0;
+    }
 
     updateModuleUI();
     updateLogicUI();
     updatePinUI();
     updateCartridgeUI();
+    syncTouchController(0);
+    syncTouchController(1);
 
     render();
 
